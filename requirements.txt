@@ -1,0 +1,7 @@
+ecdsa
+fastecdsa
+sympy
+cairo-lang
+cairo-nile
+black
+cairo-toolkit
