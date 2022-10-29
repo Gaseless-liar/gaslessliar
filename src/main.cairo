@@ -161,6 +161,7 @@ func close_dispute_state_1{
     let (old_h1) = _dispute_state_1.read(dispute);
     assert h1 = old_h1;
     let (dispute_data) = _dispute_data.read(dispute);
+    assert dispute_data.state = 1;
     _dispute_data.write(
         dispute,
         DisputeData(dispute_data.from_a, dispute_data.game_id, dispute_data.hash, dispute_data.state, 0),
@@ -169,7 +170,7 @@ func close_dispute_state_1{
     return ();
 }
 
-// gives valid state1, expects valid state2
+// gives valid state2, expects valid state3
 @external
 func open_dispute_state_2{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, ecdsa_ptr: SignatureBuiltin*
@@ -222,11 +223,90 @@ func close_dispute_state_2{
     assert starting_card = hash;
 
     let (dispute_data) = _dispute_data.read(dispute);
+    assert dispute_data.state = 2;
     _dispute_data.write(
         dispute,
         DisputeData(dispute_data.from_a, dispute_data.game_id, dispute_data.hash, dispute_data.state, 0),
     );
 
+    return ();
+}
+
+// gives valid state2 and state3, expects valid state4
+@external
+func open_dispute_state_3{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, ecdsa_ptr: SignatureBuiltin*
+}(
+    dispute,
+    game_id,
+    disp2_prev_state_hash,
+    disp2_s2,
+    disp2_h1,
+    disp2_sig: (felt, felt),
+    disp3_s1,
+    disp3_starting_card,
+    disp3_sig: (felt, felt),
+) {
+    // ensure b tx is signed
+    let (game_data: GameData) = games.read(game_id);
+    let (hash) = hash2{hash_ptr=pedersen_ptr}(game_id, disp2_prev_state_hash);
+    let (hash) = hash2{hash_ptr=pedersen_ptr}(hash, disp2_s2);
+    let (hash) = hash2{hash_ptr=pedersen_ptr}(hash, disp2_h1);
+    let (hash) = hash2{hash_ptr=pedersen_ptr}(hash, 2);
+    verify_ecdsa_signature(hash, game_data.key_b, disp2_sig[0], disp2_sig[1]);
+
+    // ensure a tx is signed
+    let (hash_disp_3) = hash2{hash_ptr=pedersen_ptr}(game_id, hash);
+    let (hash_disp_3) = hash2{hash_ptr=pedersen_ptr}(hash_disp_3, disp3_s1);
+    let (hash_disp_3) = hash2{hash_ptr=pedersen_ptr}(hash_disp_3, disp3_starting_card);
+    let (hash_disp_3) = hash2{hash_ptr=pedersen_ptr}(hash_disp_3, 3);
+
+    verify_ecdsa_signature(hash_disp_3, game_data.key_a, disp3_sig[0], disp3_sig[1]);
+
+    // hash(s1) = old(h1)
+    let (hash) = hash2{hash_ptr=pedersen_ptr}(disp3_s1, 0);
+    assert hash = disp2_h1;
+
+    // starting_card = hash(s1, old(s2))
+    let (hash) = hash2{hash_ptr=pedersen_ptr}(disp3_s1, disp2_s2);
+    assert hash = disp3_starting_card;
+
+    // write DisputeData
+    let (existing_data) = _dispute_data.read(dispute);
+    assert existing_data.expiry = 0;
+
+    // create the dispute, expiring in 5 minutes
+    let (now) = get_block_timestamp();
+    _dispute_data.write(dispute, DisputeData(FALSE, game_id, hash_disp_3, 3, now + 600));
+    dispute_opened.emit(game_id, dispute);
+
+    return ();
+}
+
+// gives valid state4
+@external
+func close_dispute_state_3{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, ecdsa_ptr: SignatureBuiltin*
+}(dispute, ah0, ah1, ah2, ah3, seed_b, sig: (felt, felt)) {
+    let (dispute_data: DisputeData) = _dispute_data.read(dispute);
+    assert dispute_data.state = 3;
+
+    // validation
+    let (game_data: GameData) = games.read(dispute_data.game_id);
+    let (hash) = hash2{hash_ptr=pedersen_ptr}(dispute_data.game_id, dispute_data.hash);
+    let (hash) = hash2{hash_ptr=pedersen_ptr}(hash, ah0);
+    let (hash) = hash2{hash_ptr=pedersen_ptr}(hash, ah1);
+    let (hash) = hash2{hash_ptr=pedersen_ptr}(hash, ah2);
+    let (hash) = hash2{hash_ptr=pedersen_ptr}(hash, ah3);
+    let (hash) = hash2{hash_ptr=pedersen_ptr}(hash, seed_b);
+    let (hash) = hash2{hash_ptr=pedersen_ptr}(hash, 4);
+    verify_ecdsa_signature(hash, game_data.key_b, sig[0], sig[1]);
+    // todo: log event so A can continue
+
+    _dispute_data.write(
+        dispute,
+        DisputeData(dispute_data.from_a, dispute_data.game_id, dispute_data.hash, dispute_data.state, 0),
+    );
     return ();
 }
 
