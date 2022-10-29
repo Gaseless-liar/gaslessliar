@@ -399,9 +399,8 @@ func test_dispute3{syscall_ptr: felt*, range_check_ptr, pedersen_ptr: HashBuilti
         ids.ah1 = pedersen_hash(a1, 0)
         ids.ah2 = pedersen_hash(a2, 0)
         ids.ah3 = pedersen_hash(a3, 0)
-        ids.seed_b = random.randrange(P)
 
-        state4 = { 'game_id' : 1, 'prev_state_hash' : ids.hashed_state3, 'ah0' : ids.ah0, 'ah1' : ids.ah1, 'ah2' : ids.ah2, 'ah3' : ids.ah3, 'seed_b' : ids.seed_b}
+        state4 = { 'game_id' : 1, 'prev_state_hash' : ids.hashed_state3, 'ah0' : ids.ah0, 'ah1' : ids.ah1, 'ah2' : ids.ah2, 'ah3' : ids.ah3}
         ids.hashed_state4 = pedersen_hash(pedersen_hash(pedersen_hash(pedersen_hash(pedersen_hash(state4['game_id'], state4['prev_state_hash']), state4['ah0']), state4['ah1']), state4['ah2']), state4['ah3'])
         ids.state4_sig0, ids.state4_sig1 = sign(ids.hashed_state3, 2)
     %}
