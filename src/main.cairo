@@ -118,6 +118,7 @@ func get_game_data{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
 
 // Submit
 
+// gives valid state1, expects valid state2
 @external
 func open_dispute_state_1{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, ecdsa_ptr: SignatureBuiltin*
@@ -143,6 +144,7 @@ func open_dispute_state_1{
     return ();
 }
 
+// gives valid state2 to close a dispute on a valid state1
 @external
 func close_dispute_state_1{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, ecdsa_ptr: SignatureBuiltin*
@@ -167,10 +169,11 @@ func close_dispute_state_1{
     return ();
 }
 
+// gives valid state1, expects valid state2
 @external
 func open_dispute_state_2{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, ecdsa_ptr: SignatureBuiltin*
-}(dispute, game_id, prev_state_hash, s2, h1, sig: (felt, felt)) {
+}(dispute, game_id, prev_state_hash, s2, h1, sig: (felt, felt), prev_sig: (felt, felt)) {
     // validation
     let (game_data: GameData) = games.read(game_id);
     let (hash) = hash2{hash_ptr=pedersen_ptr}(game_id, prev_state_hash);
@@ -179,6 +182,8 @@ func open_dispute_state_2{
     // we hash with state2
     let (hash) = hash2{hash_ptr=pedersen_ptr}(hash, 2);
     verify_ecdsa_signature(hash, game_data.key_b, sig[0], sig[1]);
+    // we ensure link to previous dispute
+    verify_ecdsa_signature(prev_state_hash, game_data.key_a, prev_sig[0], prev_sig[1]);
 
     // ensure there is no existing data
     let (existing_data) = _dispute_data.read(dispute);
@@ -194,6 +199,7 @@ func open_dispute_state_2{
     return ();
 }
 
+// gives valid state3 to close a dispute on a valid state2
 @external
 func close_dispute_state_2{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, ecdsa_ptr: SignatureBuiltin*
@@ -224,6 +230,7 @@ func close_dispute_state_2{
     return ();
 }
 
+// gives reference to an opened and expired dispute to send funds to the issue creator
 @external
 func close_dispute{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, ecdsa_ptr: SignatureBuiltin*

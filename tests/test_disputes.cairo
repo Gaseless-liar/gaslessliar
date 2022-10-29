@@ -259,7 +259,7 @@ func test_dispute2{syscall_ptr: felt*, range_check_ptr, pedersen_ptr: HashBuilti
 
     // let's open and close a dispute 1
     IGasLessLiar.open_dispute_state_2(
-        gll_contract, 'dispute_1', 1, hashed_state1, s2, h1, (state2_sig0, state2_sig1)
+        gll_contract, 'dispute_1', 1, hashed_state1, s2, h1, (state2_sig0, state2_sig1), (state1_sig0, state1_sig1)
     );
     IGasLessLiar.close_dispute_state_2(
         gll_contract, 'dispute_1', 1, hashed_state2, s1, starting_card, (state3_sig0, state3_sig1)
