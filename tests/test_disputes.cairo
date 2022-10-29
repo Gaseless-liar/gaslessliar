@@ -84,11 +84,21 @@ func test_game_creation{syscall_ptr: felt*, range_check_ptr, pedersen_ptr: HashB
         ids.signature_b_1, ids.signature_b_2 = sign(ids.B, 2)
     %}
     IGasLessLiar.set_b_user(gll_contract, game_id=1, sig=(signature_b_1, signature_b_2));
-    %{ stop_prank_gll() %}
+    %{
+        from starkware.crypto.signature.signature import sign
+        from starkware.crypto.signature.fast_pedersen_hash import pedersen_hash
+        import random
+        P = 2**251 + 17*2**192 + 1
 
-    let (game_data: GameData) = IGasLessLiar.get_game_data(gll_contract, game_id=1);
-    assert game_data.user_a = A;
-    assert game_data.user_b = B;
+        # state1
+        s1 = random.randrange(P)
+        state1 = { 'game_id' : 1, 'h1' : pedersen_hash(s1, 0), 'type' : 1}
+        hashed_state1 = pedersen_hash(pedersen_hash(state1['game_id'], state1['h1']), state1['type'])
+
+        # state2
+
+        # todo: écrire les tests du round init et tester la fraud proof
+    %}
 
     return ();
 }
