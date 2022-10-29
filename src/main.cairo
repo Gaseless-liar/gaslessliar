@@ -11,7 +11,14 @@ from starkware.cairo.common.hash import hash2
 from cairo_contracts.src.openzeppelin.token.erc20.IERC20 import IERC20
 
 from src.balances import _token_addr, _balances, increase_balance, decrease_balance
-from src.disputes import dispute_opened, DisputeData, _dispute_data, _dispute_state_1
+from src.disputes import (
+    dispute_opened,
+    DisputeData,
+    _dispute_data,
+    _dispute_state_1,
+    _dispute_state_2,
+    DisputeData2,
+)
 from src.game import games, GameData
 
 //
@@ -151,6 +158,63 @@ func close_dispute_state_1{
     // h = old(h)
     let (old_h1) = _dispute_state_1.read(dispute);
     assert h1 = old_h1;
+    let (dispute_data) = _dispute_data.read(dispute);
+    _dispute_data.write(
+        dispute,
+        DisputeData(dispute_data.from_a, dispute_data.game_id, dispute_data.hash, dispute_data.state, 0),
+    );
+
+    return ();
+}
+
+@external
+func open_dispute_state_2{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, ecdsa_ptr: SignatureBuiltin*
+}(dispute, game_id, prev_state_hash, s2, h1, sig: (felt, felt)) {
+    // validation
+    let (game_data: GameData) = games.read(game_id);
+    let (hash) = hash2{hash_ptr=pedersen_ptr}(game_id, prev_state_hash);
+    let (hash) = hash2{hash_ptr=pedersen_ptr}(hash, s2);
+    let (hash) = hash2{hash_ptr=pedersen_ptr}(hash, h1);
+    // we hash with state2
+    let (hash) = hash2{hash_ptr=pedersen_ptr}(hash, 2);
+    verify_ecdsa_signature(hash, game_data.key_b, sig[0], sig[1]);
+
+    // ensure there is no existing data
+    let (existing_data) = _dispute_data.read(dispute);
+    assert existing_data.expiry = 0;
+
+    // create the dispute, expiring in 5 minutes
+    let (now) = get_block_timestamp();
+    _dispute_data.write(dispute, DisputeData(FALSE, game_id, hash, 2, now + 600));
+    dispute_opened.emit(game_id, dispute);
+
+    // write the data required to close the dispute
+    _dispute_state_2.write(dispute, DisputeData2(h1, s2));
+    return ();
+}
+
+@external
+func close_dispute_state_2{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, ecdsa_ptr: SignatureBuiltin*
+}(dispute, game_id, prev_state_hash, s1, starting_card, sig: (felt, felt)) {
+    // validation
+    let (game_data: GameData) = games.read(game_id);
+    let (hash) = hash2{hash_ptr=pedersen_ptr}(game_id, prev_state_hash);
+    let (hash) = hash2{hash_ptr=pedersen_ptr}(hash, s1);
+    let (hash) = hash2{hash_ptr=pedersen_ptr}(hash, starting_card);
+    let (hash) = hash2{hash_ptr=pedersen_ptr}(hash, 3);
+    verify_ecdsa_signature(hash, game_data.key_a, sig[0], sig[1]);
+
+    // hash(s1) = old(h1)
+    let (old_data: DisputeData2) = _dispute_state_2.read(dispute);
+    let (hash) = hash2{hash_ptr=pedersen_ptr}(s1, 0);
+    assert hash = old_data.h1;
+
+    // starting_card = hash(s1, old(s2))
+    let (hash) = hash2{hash_ptr=pedersen_ptr}(s1, old_data.s2);
+    assert starting_card = hash;
+
     let (dispute_data) = _dispute_data.read(dispute);
     _dispute_data.write(
         dispute,

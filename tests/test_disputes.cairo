@@ -26,7 +26,7 @@ const A = 456;
 const B = 789;
 
 @external
-func test_game_creation{syscall_ptr: felt*, range_check_ptr, pedersen_ptr: HashBuiltin*}() {
+func test_dispute1{syscall_ptr: felt*, range_check_ptr, pedersen_ptr: HashBuiltin*}() {
     alloc_locals;
     local eth_contract;
     local gll_contract;
@@ -124,7 +124,6 @@ func test_game_creation{syscall_ptr: felt*, range_check_ptr, pedersen_ptr: HashB
         hashed_state2 = pedersen_hash(pedersen_hash(pedersen_hash(pedersen_hash(state2['game_id'], state2['prev_state_hash']), state2['s2']), state2['h1']), state2['type'])
         state3 = { 'game_id' : 1, 'prev_state_hash' : hashed_state2, 's1' : s1, 'starting_card' : pedersen_hash(s1, state2['s2']), 'type' : 3}
 
-        # todo: écrire les tests du round init et tester la fraud proof
         warp(1, context.gll_contract)
     %}
 
@@ -144,6 +143,127 @@ func test_game_creation{syscall_ptr: felt*, range_check_ptr, pedersen_ptr: HashB
 
     let (b_bal: Uint256) = IERC20.balanceOf(eth_contract, B);
     assert_uint256_eq(b_bal, Uint256(0, 0));
+
+    return ();
+}
+
+@external
+func test_dispute2{syscall_ptr: felt*, range_check_ptr, pedersen_ptr: HashBuiltin*}() {
+    alloc_locals;
+    local eth_contract;
+    local gll_contract;
+    %{
+        ids.eth_contract = context.eth_contract
+        ids.gll_contract = context.gll_contract
+        stop_prank_eth = start_prank(ids.A, context.eth_contract)
+    %}
+
+    // Let's make A and B deposit enough to play
+    local to_deposit: Uint256 = Uint256(0, 500);
+    IERC20.transfer(eth_contract, B, to_deposit);
+    IERC20.approve(eth_contract, gll_contract, to_deposit);
+    %{
+        stop_prank_eth()
+        stop_prank_gll = start_prank(ids.A, context.gll_contract)
+    %}
+
+    IGasLessLiar.deposit(gll_contract, to_deposit);
+
+    %{
+        stop_prank_gll() 
+        stop_prank_eth = start_prank(ids.B, context.eth_contract)
+    %}
+    IERC20.approve(eth_contract, gll_contract, to_deposit);
+    %{
+        stop_prank_eth()
+        stop_prank_gll = start_prank(ids.B, context.gll_contract)
+    %}
+    IGasLessLiar.deposit(gll_contract, to_deposit);
+    %{ stop_prank_gll() %}
+
+    // We can then start a game (anyone can start it)
+    IGasLessLiar.create_game(
+        gll_contract, id=1, entry_fee=Uint256(0, 500), key_a=A_PUB, key_b=B_PUB
+    );
+
+    // A joins the game and pay
+    local signature_a_1;
+    local signature_a_2;
+    %{
+        stop_prank_gll = start_prank(ids.A, context.gll_contract)
+        from starkware.crypto.signature.signature import sign
+        ids.signature_a_1, ids.signature_a_2 = sign(ids.A, 1)
+    %}
+    IGasLessLiar.set_a_user(gll_contract, game_id=1, sig=(signature_a_1, signature_a_2));
+    %{ stop_prank_gll() %}
+
+    // B joins the game and pay
+    local signature_b_1;
+    local signature_b_2;
+    %{
+        stop_prank_gll = start_prank(ids.B, context.gll_contract)
+        from starkware.crypto.signature.signature import sign
+        ids.signature_b_1, ids.signature_b_2 = sign(ids.B, 2)
+    %}
+    IGasLessLiar.set_b_user(gll_contract, game_id=1, sig=(signature_b_1, signature_b_2));
+
+    local h1;
+    local state1_sig0;
+    local state1_sig1;
+    local hashed_state1;
+    local s2;
+    local h1;
+    local state2_sig0;
+    local state2_sig1;
+    local hashed_state2;
+    local s1;
+    local starting_card;
+    local state3_sig0;
+    local state3_sig1;
+    %{
+        from starkware.crypto.signature.signature import sign
+        from starkware.crypto.signature.fast_pedersen_hash import pedersen_hash
+        import random
+        P = 2**251 + 17*2**192 + 1
+
+        # state1
+        s1 = random.randrange(P)
+        ids.h1 = pedersen_hash(s1, 0)
+        state1 = { 'game_id' : 1, 'h1' : ids.h1, 'type' : 1}
+        ids.hashed_state1 = pedersen_hash(pedersen_hash(state1['game_id'], state1['h1']), state1['type'])
+        ids.state1_sig0, ids.state1_sig1 = sign(ids.hashed_state1, 1)
+
+        # state2
+        assert state1['game_id'] == 1
+        assert state1['type'] == 1
+        hashed_state1 = pedersen_hash(pedersen_hash(state1['game_id'], state1['h1']), state1['type'])
+        ids.s2 = random.randrange(P)
+        state2 = { 'game_id' : 1, 'prev_state_hash' : hashed_state1, 's2' : ids.s2, 'h1' : pedersen_hash(s1, 0), 'type' : 2}
+        ids.hashed_state2 = pedersen_hash(pedersen_hash(pedersen_hash(pedersen_hash(state2['game_id'], state2['prev_state_hash']), state2['s2']), state2['h1']), state2['type'])
+        ids.state2_sig0, ids.state2_sig1 = sign(ids.hashed_state2, 2)
+
+        # state3
+        assert state1['game_id'] == 1
+        assert state1['type'] == 1
+        assert state2['h1'] == state1['h1']
+        hashed_state1 = pedersen_hash(pedersen_hash(state1['game_id'], state1['h1']), state1['type'])
+        assert hashed_state1 == state2['prev_state_hash']
+        hashed_state2 = pedersen_hash(pedersen_hash(pedersen_hash(pedersen_hash(state2['game_id'], state2['prev_state_hash']), state2['s2']), state2['h1']), state2['type'])
+        ids.s1 = s1
+        ids.starting_card = pedersen_hash(s1, state2['s2'])
+        state3 = { 'game_id' : 1, 'prev_state_hash' : hashed_state2, 's1' : s1, 'starting_card' : ids.starting_card, 'type' : 3}
+        hashed_state3 = pedersen_hash(pedersen_hash(pedersen_hash(pedersen_hash(state3['game_id'], state3['prev_state_hash']), state3['s1']), state3['starting_card']), state3['type'])
+        ids.state3_sig0, ids.state3_sig1 = sign(hashed_state3, 1)
+        warp(1, context.gll_contract)
+    %}
+
+    // let's open and close a dispute 1
+    IGasLessLiar.open_dispute_state_2(
+        gll_contract, 'dispute_1', 1, hashed_state1, s2, h1, (state2_sig0, state2_sig1)
+    );
+    IGasLessLiar.close_dispute_state_2(
+        gll_contract, 'dispute_1', 1, hashed_state2, s1, starting_card, (state3_sig0, state3_sig1)
+    );
 
     return ();
 }

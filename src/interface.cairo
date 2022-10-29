@@ -32,6 +32,14 @@ namespace IGasLessLiar {
     func close_dispute_state_1(dispute, game_id, prev_state_hash, s2, h1, sig: (felt, felt)) {
     }
 
+    func open_dispute_state_2(dispute, game_id, prev_state_hash, s2, h1, sig: (felt, felt)) {
+    }
+
+    func close_dispute_state_2(
+        dispute, game_id, prev_state_hash, s1, starting_card, sig: (felt, felt)
+    ) {
+    }
+
     func close_dispute(dispute) {
     }
 }
