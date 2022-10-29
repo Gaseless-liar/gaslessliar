@@ -9,7 +9,7 @@ from src.game import GameData
 @external
 func __setup__() {
     %{
-        context.eth_contract = deploy_contract("./lib/cairo_contracts/src/openzeppelin/token/erc20/presets/ERC20.cairo", [123, 123, 20, 2**127, 2**127, 456]).contract_address
+        context.eth_contract = deploy_contract("./lib/cairo_contracts/src/openzeppelin/token/erc20/presets/ERC20.cairo", [123, 123, 20, 0, 1000, 456]).contract_address
         context.gll_contract = deploy_contract("./src/main.cairo", [context.eth_contract]).contract_address
     %}
     return ();
@@ -125,13 +125,25 @@ func test_game_creation{syscall_ptr: felt*, range_check_ptr, pedersen_ptr: HashB
         state3 = { 'game_id' : 1, 'prev_state_hash' : hashed_state2, 's1' : s1, 'starting_card' : pedersen_hash(s1, state2['s2']), 'type' : 3}
 
         # todo: écrire les tests du round init et tester la fraud proof
+        warp(1, context.gll_contract)
     %}
 
-    // let's open and close a dispute
+    // let's open and close a dispute 1
     IGasLessLiar.open_dispute_state_1(gll_contract, 'dispute_1', 1, h1, (state1_sig0, state1_sig1));
     IGasLessLiar.close_dispute_state_1(
         gll_contract, 'dispute_1', 1, hashed_state1, s2, h1, (state2_sig0, state2_sig1)
     );
+
+    // let's reopen it and wait (we could forbid reopening it in the future but let's keep it that way for the hackathon)
+    IGasLessLiar.open_dispute_state_1(gll_contract, 'dispute_1', 1, h1, (state1_sig0, state1_sig1));
+    %{ warp(1200, context.gll_contract) %}
+
+    IGasLessLiar.close_dispute(gll_contract, 'dispute_1');
+    let (a_bal: Uint256) = IERC20.balanceOf(eth_contract, A);
+    assert_uint256_eq(a_bal, Uint256(0, 1000));
+
+    let (b_bal: Uint256) = IERC20.balanceOf(eth_contract, B);
+    assert_uint256_eq(b_bal, Uint256(0, 0));
 
     return ();
 }
