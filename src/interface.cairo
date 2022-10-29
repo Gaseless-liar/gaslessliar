@@ -25,4 +25,13 @@ namespace IGasLessLiar {
 
     func get_game_data(game_id: felt) -> (game_data: GameData) {
     }
+
+    func open_dispute_state_1(dispute, game_id, h1, sig: (felt, felt)) {
+    }
+
+    func close_dispute_state_1(dispute, game_id, prev_state_hash, s2, h1, sig: (felt, felt)) {
+    }
+
+    func close_dispute(dispute) {
+    }
 }
