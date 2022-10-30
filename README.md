@@ -23,6 +23,8 @@ Alice plays against Bob
 GasLessLiar can be seen as a channel between two players. One player could use this channel to transfer a game state to the other. If the transition from the previous state to this state is correct, the second player will accept it. If it is incorrect or if the second player doesn't answer, the first user can give to the contract his last valid known state. The other user will have to call the contract with a valid transition to a new state. If he doesn't, the first user will be able to trigger a win after a delay (5 minutes here).
 To open a channel, two users need to generate temporary keypairs. They will share public keys and one will call the contract with a Game configuration (game_id, public_keys and bet amount). Both users will then to join the gane and lock their bet into the contract. At the end of the game, if everything went well, a single signature from the loser saying "I lost" will allow the winner to redeem the funds.
 
+> To see a dispute example, check out [this test](https://github.com/Gaseless-liar/gaslessliar/blob/master/tests/test_disputes.cairo#L149).
+
 # States (not up to date)
 ### States
 
