@@ -1,6 +1,6 @@
 <h1 align="center">
   <br>
-  <img src="/logo.png?raw=true" alt="Cards logo" width="512">
+  <img src="/logo.svg?raw=true" alt="Cards logo" width="256">
   <br>
 </h1>
 
