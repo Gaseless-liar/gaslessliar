@@ -7,7 +7,7 @@
 <h4 align="center">🃏 A lightning network inspired Starknet Game</h4>
 
 # Why GasLessLiar?
-Blockchain allows decentralized interactions between users following contract rules, but blockchain interactions are expensive and slow. GasLessLiar is a proof of concept of a Game which allows honest users to avoid interacting with the chain. The idea is pretty simple: this contract allows you to prove if your opponent is malicious and will punish him. And because he would be punished if he was malicious, he will probably stay honest, and your interactions will therefore stay off-chain. To check our peer to peer client, [Click here](https://github.com/Gaseless-liar/liar-game).
+Blockchain allows decentralized interactions between users following contract rules, but it is expensive and slow. GasLessLiar is a proof of concept of a Game which allows honest users to avoid interacting with the chain. The idea is pretty simple: this contract allows you to prove if your opponent is malicious and will punish him. And because he would be punished if he was malicious, he will probably stay honest, and your interactions will therefore stay off-chain. To check our peer to peer client, [Click here](https://github.com/Gaseless-liar/liar-game).
 
 # What's the game?
 Alice plays against Bob
