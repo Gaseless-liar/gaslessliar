@@ -116,6 +116,45 @@ func get_game_data{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     return (game_data,);
 }
 
+@external
+func win_game_a{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, ecdsa_ptr: SignatureBuiltin*
+}(game_id: felt, sig: (felt, felt)) {
+    let (game_data: GameData) = games.read(game_id);
+    let (hash) = hash2{hash_ptr=pedersen_ptr}('I lost', game_id);
+    verify_ecdsa_signature(hash, game_data.key_b, sig[0], sig[1]);
+
+    let (res: Uint256, carry: felt) = uint256_add(game_data.entry_fee, game_data.entry_fee);
+    assert carry = 0;
+
+    increase_balance(game_data.user_a, res);
+
+    games.write(
+        game_id,
+        GameData(Uint256(0, 0), game_data.key_a, game_data.key_b, game_data.user_a, game_data.user_a),
+    );
+    return ();
+}
+
+@external
+func win_game_b{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, ecdsa_ptr: SignatureBuiltin*
+}(game_id: felt, sig: (felt, felt)) {
+    let (game_data: GameData) = games.read(game_id);
+    let (hash) = hash2{hash_ptr=pedersen_ptr}('I lost', game_id);
+    verify_ecdsa_signature(hash, game_data.key_a, sig[0], sig[1]);
+
+    let (res: Uint256, carry: felt) = uint256_add(game_data.entry_fee, game_data.entry_fee);
+    assert carry = 0;
+
+    increase_balance(game_data.user_b, res);
+    games.write(
+        game_id,
+        GameData(Uint256(0, 0), game_data.key_a, game_data.key_b, game_data.user_a, game_data.user_a),
+    );
+    return ();
+}
+
 // Submit
 
 // gives valid state1, expects valid state2

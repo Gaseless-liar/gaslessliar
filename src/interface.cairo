@@ -26,6 +26,12 @@ namespace IGasLessLiar {
     func get_game_data(game_id: felt) -> (game_data: GameData) {
     }
 
+    func win_game_a(game_id: felt, sig: (felt, felt)) {
+    }
+
+    func win_game_b(game_id: felt, sig: (felt, felt)) {
+    }
+
     func open_dispute_state_1(dispute, game_id, h1, sig: (felt, felt)) {
     }
 

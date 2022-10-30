@@ -98,5 +98,36 @@ func test_game_creation{syscall_ptr: felt*, range_check_ptr, pedersen_ptr: HashB
     assert game_data.user_a = A;
     assert game_data.user_b = B;
 
+    let magic_value = 'I lost';
+    local game_id = 1;
+    local signed_by_B0;
+    local signed_by_B1;
+    %{
+        from starkware.crypto.signature.signature import sign
+        from starkware.crypto.signature.fast_pedersen_hash import pedersen_hash
+
+        ids.signed_by_B0, ids.signed_by_B1 = sign(pedersen_hash(ids.magic_value, ids.game_id), 2)
+    %}
+    IGasLessLiar.win_game_a(gll_contract, game_id, (signed_by_B0, signed_by_B1));
+
+    let (deposited: Uint256) = IGasLessLiar.get_deposit(gll_contract, A);
+    let dep_low = deposited.low;
+    let dep_high = deposited.high;
+    assert_uint256_eq(deposited, Uint256(0, 1000));
+
+    local game_id = 1;
+    local signed_by_A0;
+    local signed_by_A1;
+    %{
+        from starkware.crypto.signature.signature import sign
+        from starkware.crypto.signature.fast_pedersen_hash import pedersen_hash
+
+        ids.signed_by_A0, ids.signed_by_A1 = sign(pedersen_hash(ids.magic_value, ids.game_id), 1)
+    %}
+    IGasLessLiar.win_game_b(gll_contract, game_id, (signed_by_A0, signed_by_A1));
+
+    let (deposited: Uint256) = IGasLessLiar.get_deposit(gll_contract, B);
+    assert_uint256_eq(deposited, Uint256(0, 0));
+
     return ();
 }
